@@ -1042,6 +1042,106 @@ def chat_with_ai(
     }
 
 
+# ========== TTS (Text-to-Speech) Endpoint for Jarvis ==========
+import asyncio
+
+class EdgeTTS:
+    """Microsoft Edge TTS implementation using edge-tts library or HTTP"""
+    
+    VOICES = {
+        'en-US': {
+            'Jarvis': 'en-US-JasonNeural',  # 更像 Jarvis 的声音
+            'Jenny': 'en-US-JennyNeural',
+            'Samantha': 'en-US-SamanthaNeural',
+        },
+        'zh-CN': {
+            'Xiaoxiao': 'zh-CN-XiaoxiaoNeural',  # 自然女声
+            'Yunxi': 'zh-CN-YunxiNeural',
+            'Yunyang': 'zh-CN-YunyangNeural',
+        }
+    }
+    
+    @staticmethod
+    async def synthesize(text: str, voice_name: str = None, lang: str = 'en-US') -> bytes:
+        """Synthesize speech using Edge TTS"""
+        import subprocess
+        import tempfile
+        import os
+        
+        # Select voice based on language
+        if voice_name is None:
+            voice_map = EdgeTTS.VOICES.get(lang, EdgeTTS.VOICES['en-US'])
+            voice_name = voice_map.get('Jarvis', voice_map.get('Jenny', list(voice_map.values())[0]))
+        
+        # Use edge-tts CLI if available, otherwise use subprocess
+        try:
+            # Create temp files
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
+                f.write(text)
+                input_file = f.name
+            
+            output_file = input_file.replace('.txt', '.mp3')
+            
+            # Try using edge-tts
+            result = subprocess.run(
+                ['edge-tts', '--input-text', text, '--voice', voice_name, '--write-media', output_file],
+                capture_output=True, timeout=30
+            )
+            
+            if os.path.exists(output_file):
+                with open(output_file, 'rb') as f:
+                    audio_data = f.read()
+                os.unlink(input_file)
+                os.unlink(output_file)
+                return audio_data
+            else:
+                # Fallback - generate silence/empty response
+                raise Exception("TTS generation failed")
+                
+        except Exception as e:
+            # Return empty audio if TTS fails
+            return b''
+
+
+# ========== Simple TTS Endpoint ==========
+@app.post("/ai/tts")
+async def text_to_speech(
+    payload: dict,
+    current_user: schemas.User = Depends(get_current_user),
+):
+    """Convert text to speech using Edge TTS"""
+    text = payload.get("text", "")
+    lang = payload.get("lang", "zh-CN")  # Default to Chinese
+    voice = payload.get("voice")  # Optional voice name
+    
+    if not text:
+        raise HTTPException(status_code=400, detail="Text is required")
+    
+    # Try to generate speech
+    try:
+        audio_data = await asyncio.wait_for(
+            EdgeTTS.synthesize(text, voice, lang),
+            timeout=30
+        )
+        
+        if audio_data:
+            from fastapi.responses import Response
+            return Response(
+                content=audio_data,
+                media_type="audio/mp3",
+                headers={"Content-Disposition": f"inline; filename=jarvis.mp3"}
+            )
+        else:
+            # Return placeholder - client should use browser TTS
+            return {"error": "TTS service unavailable", "use_browser_tts": True}
+            
+    except asyncio.TimeoutError:
+        raise HTTPException(status_code=504, detail="TTS service timeout")
+    except Exception as e:
+        logger.error(f"TTS error: {e}")
+        return {"error": str(e), "use_browser_tts": True}
+
+
 def generate_jarvis_response(message: str, context: list, ai_config: dict) -> str:
     """Generate Jarvis-style response"""
     message_lower = message.lower()
