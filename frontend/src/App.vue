@@ -128,6 +128,10 @@
               <el-icon class="menu-item-icon"><Microphone /></el-icon>
               <template #title>贾维斯</template>
             </el-menu-item>
+            <el-menu-item index="/commands">
+              <el-icon class="menu-item-icon"><Document /></el-icon>
+              <template #title>命令手册</template>
+            </el-menu-item>
             <el-menu-item index="/settings">
               <el-icon class="menu-item-icon"><Setting /></el-icon>
               <template #title>系统设置</template>

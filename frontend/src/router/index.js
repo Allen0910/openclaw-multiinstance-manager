@@ -84,6 +84,12 @@ const routes = [
     name: 'Jarvis',
     component: () => import('../views/Jarvis.vue'),
     meta: { requiresAuth: true }
+  },
+  {
+    path: '/commands',
+    name: 'Commands',
+    component: () => import('../views/Commands.vue'),
+    meta: { requiresAuth: true }
   }
 ]
 
