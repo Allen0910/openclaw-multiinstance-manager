@@ -1,160 +1,223 @@
 <template>
   <div class="jarvis-container">
-    <!-- 全息背景网格 -->
-    <div class="holographic-grid"></div>
+    <!-- 动态粒子背景 -->
+    <div class="particles" ref="particlesContainer">
+      <canvas ref="particlesCanvas"></canvas>
+    </div>
     
-    <!-- 3D 弧形反应堆 -->
-    <div class="arc-reactor">
-      <!-- 外圈 -->
-      <div class="reactor-ring outer">
-        <div class="ring-glow"></div>
-      </div>
-      <!-- 中圈 -->
-      <div class="reactor-ring middle">
-        <div class="ring-glow"></div>
-      </div>
-      <!-- 内圈 -->
-      <div class="reactor-ring inner">
-        <div class="ring-glow"></div>
-      </div>
-      <!-- 核心 -->
-      <div class="reactor-core">
-        <div class="core-pulse"></div>
-        <div class="core-inner"></div>
-      </div>
-      <!-- 能量流动画 -->
-      <div class="energy-flow"></div>
+    <!-- 3D 网格背景 -->
+    <div class="grid-background">
+      <div class="grid-layer layer-1"></div>
+      <div class="grid-layer layer-2"></div>
+      <div class="grid-layer layer-3"></div>
     </div>
-
-    <!-- 3D 全息面板 -->
-    <div class="holographic-panels">
-      <!-- 左侧面板 - 系统状态 -->
-      <div class="holo-panel left">
-        <div class="panel-header">
-          <span class="panel-title">SYSTEMS</span>
-          <span class="panel-status online">ONLINE</span>
+    
+    <!-- 顶部状态栏 -->
+    <div class="system-header">
+      <!-- 左侧：流动日志 -->
+      <div class="log-stream-panel">
+        <div class="panel-title">
+          <span class="title-icon">◈</span>
+          SYSTEM LOGS
         </div>
-        <div class="panel-content">
-          <div class="system-item" v-for="(sys, index) in systems" :key="index">
-            <div class="sys-name">{{ sys.name }}</div>
-            <div class="sys-bar">
-              <div class="sys-value" :style="{ width: sys.value + '%', background: sys.color }"></div>
-            </div>
-            <div class="sys-value-text">{{ sys.value }}%</div>
+        <div class="log-content" ref="logContent">
+          <div class="log-line" v-for="(log, index) in systemLogs" :key="index" :class="log.type">
+            <span class="log-time">{{ log.time }}</span>
+            <span class="log-text">{{ log.text }}</span>
           </div>
         </div>
       </div>
+      
+      <!-- 右侧：时间和资源 -->
+      <div class="resource-panel">
+        <div class="time-display-header">
+          <span class="timezone">Asia/Shanghai</span>
+          <span class="main-time">{{ currentTime }}</span>
+        </div>
+        <div class="resource-bars">
+          <div class="resource-item">
+            <span class="resource-label">CPU</span>
+            <div class="resource-bar">
+              <div class="resource-fill cpu" :style="{ width: cpuUsage + '%' }"></div>
+            </div>
+            <span class="resource-value">{{ cpuUsage }}%</span>
+          </div>
+          <div class="resource-item">
+            <span class="resource-label">MEM</span>
+            <div class="resource-bar">
+              <div class="resource-fill memory" :style="{ width: memoryUsage + '%' }"></div>
+            </div>
+            <span class="resource-value">{{ memoryUsage }}%</span>
+          </div>
+        </div>
+      </div>
+    </div>
 
-      <!-- 右侧面板 - 时间显示 -->
-      <div class="holo-panel right">
+    <!-- 中央核心：3D 全息球 -->
+    <div class="core-section">
+      <div class="holographic-sphere">
+        <!-- 外环 -->
+        <div class="sphere-ring outer-ring">
+          <div class="ring-segment" v-for="i in 12" :key="'o'+i"></div>
+        </div>
+        <!-- 中环 -->
+        <div class="sphere-ring middle-ring">
+          <div class="ring-segment" v-for="i in 8" :key="'m'+i"></div>
+        </div>
+        <!-- 内环 -->
+        <div class="sphere-ring inner-ring">
+          <div class="ring-segment" v-for="i in 4" :key="'i'+i"></div>
+        </div>
+        <!-- 核心球体 -->
+        <div class="sphere-core">
+          <div class="core-pulse-layer"></div>
+          <div class="core-inner">
+            <div class="core-glow"></div>
+          </div>
+        </div>
+        <!-- 能量粒子 -->
+        <div class="energy-particles">
+          <div class="particle" v-for="i in 20" :key="'p'+i" :style="getParticleStyle(i)"></div>
+        </div>
+      </div>
+      
+      <!-- 四个 Agent 气泡 -->
+      <div class="agent-bubbles">
+        <div class="agent-bubble" v-for="agent in agents" :key="agent.id" :style="{ '--hue': agent.hue }">
+          <div class="bubble-icon">{{ agent.icon }}</div>
+          <div class="bubble-name">{{ agent.name }}</div>
+          <div class="bubble-status">{{ agent.status }}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 左侧面板：GoldSeer -->
+    <div class="floating-panel left-panel" ref="leftPanel">
+      <div class="panel-scan-line"></div>
+      <div class="panel-content">
         <div class="panel-header">
-          <span class="panel-title">TIMELINE</span>
+          <span class="panel-badge">◈</span>
+          <span class="panel-title">GoldSeer</span>
         </div>
-        <div class="panel-content time-display">
-          <div class="time-main">{{ currentTime }}</div>
-          <div class="date-display">{{ currentDate }}</div>
-          <div class="weekday">{{ weekday }}</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 中央核心显示 -->
-    <div class="core-display">
-      <div class="core-avatar">
-        <svg viewBox="0 0 100 100" class="avatar-svg">
-          <!-- 外圈 -->
-          <circle cx="50" cy="50" r="48" fill="none" stroke="#00e5cc" stroke-width="1" opacity="0.5"/>
-          <circle cx="50" cy="50" r="45" fill="none" stroke="#00e5cc" stroke-width="0.5" opacity="0.3"/>
-          <!-- 内圈 -->
-          <circle cx="50" cy="50" r="35" fill="none" stroke="#00e5cc" stroke-width="1" opacity="0.7"/>
-          <circle cx="50" cy="50" r="25" fill="none" stroke="#00e5cc" stroke-width="0.5"/>
-          <!-- 核心 -->
-          <circle cx="50" cy="50" r="15" fill="rgba(0, 229, 204, 0.3)"/>
-          <circle cx="50" cy="50" r="8" fill="#00e5cc">
-            <animate attributeName="opacity" values="1;0.5;1" dur="2s" repeatCount="indefinite"/>
-          </circle>
-          <!-- 装饰线 -->
-          <line x1="50" y1="2" x2="50" y2="15" stroke="#00e5cc" stroke-width="1" opacity="0.5"/>
-          <line x1="50" y1="85" x2="50" y2="98" stroke="#00e5cc" stroke-width="1" opacity="0.5"/>
-          <line x1="2" y1="50" x2="15" y2="50" stroke="#00e5cc" stroke-width="1" opacity="0.5"/>
-          <line x1="85" y1="50" x2="98" y2="50" stroke="#00e5cc" stroke-width="1" opacity="0.5"/>
-        </svg>
-      </div>
-      <div class="core-status">
-        <div class="status-indicator" :class="{ active: isListening }"></div>
-        <span class="status-text">{{ statusText }}</span>
-      </div>
-    </div>
-
-    <!-- 语音波形可视化 -->
-    <div class="waveform-section">
-      <canvas ref="waveformCanvas" class="waveform-canvas"></canvas>
-      <div class="waveform-label" v-if="isListening">LISTENING...</div>
-      <div class="waveform-label" v-else-if="isProcessing">PROCESSING...</div>
-    </div>
-
-    <!-- 控制面板 -->
-    <div class="control-panel">
-      <!-- 主语音按钮 -->
-      <button 
-        class="voice-btn" 
-        :class="{ listening: isListening, processing: isProcessing, speaking: isSpeaking }"
-        @mousedown="startVoiceInput"
-        @mouseup="stopVoiceInput"
-        @mouseleave="stopVoiceInput"
-      >
-        <div class="btn-outer-ring"></div>
-        <div class="btn-middle-ring"></div>
-        <div class="btn-inner">
-          <div class="btn-core">
-            <svg v-if="!isListening && !isProcessing" viewBox="0 0 24 24" class="mic-icon">
-              <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
-              <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+        
+        <!-- K线缩略图 -->
+        <div class="kline-section">
+          <div class="section-label">GOLD K-LINE</div>
+          <div class="kline-chart">
+            <svg viewBox="0 0 200 60" class="kline-svg">
+              <polyline 
+                fill="none" 
+                stroke="#FF8C00" 
+                stroke-width="1.5"
+                points="0,45 20,40 40,42 60,35 80,38 100,30 120,32 140,25 160,28 180,20 200,15"
+              />
+              <polyline 
+                fill="none" 
+                stroke="rgba(255,140,0,0.3)" 
+                stroke-width="8"
+                points="0,45 20,40 40,42 60,35 80,38 100,30 120,32 140,25 160,28 180,20 200,15"
+              />
             </svg>
-            <div v-else class="voice-waves">
-              <span></span><span></span><span></span><span></span><span></span>
-            </div>
+            <div class="kline-price">$2,342.80</div>
           </div>
         </div>
-      </button>
-
-      <!-- 功能按钮组 -->
-      <div class="action-buttons">
-        <button class="action-btn" @click="speakCurrentText" title="语音播报">
-          <svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
-        </button>
-        <button class="action-btn" @click="showSystemInfo" title="系统信息">
-          <svg viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
-        </button>
-        <button class="action-btn" @click="clearConversation" title="清空对话">
-          <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
-        </button>
-        <button class="action-btn" :class="{ active: voiceEnabled }" @click="toggleVoice" title="开关语音">
-          <svg v-if="voiceEnabled" viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
-          <svg v-else viewBox="0 0 24 24"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg>
-        </button>
+        
+        <!-- 美元指数 -->
+        <div class="dxy-section">
+          <div class="section-label">USD INDEX (DXY)</div>
+          <div class="dxy-display">
+            <span class="dxy-value" :class="{ rising: dxyChange > 0 }">{{ dxyValue }}</span>
+            <span class="dxy-change" :class="{ rising: dxyChange > 0 }">
+              {{ dxyChange > 0 ? '↑' : '↓' }}{{ Math.abs(dxyChange) }}%
+            </span>
+          </div>
+        </div>
+        
+        <!-- 避险系数 -->
+        <div class="risk-section">
+          <div class="section-label">RISK AVOIDANCE</div>
+          <div class="risk-bar-container">
+            <div class="risk-bar">
+              <div class="risk-fill" :style="{ width: riskFactor + '%' }"></div>
+            </div>
+            <span class="risk-value">{{ riskFactor }}%</span>
+          </div>
+        </div>
       </div>
     </div>
 
-    <!-- 输入区域 -->
-    <div class="input-area">
-      <div class="input-container">
-        <div class="input-glow"></div>
+    <!-- 右侧面板：AIPulse -->
+    <div class="floating-panel right-panel" ref="rightPanel">
+      <div class="panel-scan-line"></div>
+      <div class="panel-content">
+        <div class="panel-header">
+          <span class="panel-badge">◈</span>
+          <span class="panel-title">AIPulse</span>
+        </div>
+        
+        <!-- AI 模型拓扑图 -->
+        <div class="topology-section">
+          <div class="section-label">NEURAL TOPOLOGY</div>
+          <div class="topology-graph">
+            <svg viewBox="0 0 160 120" class="topology-svg">
+              <!-- 连接线 -->
+              <line x1="80" y1="10" x2="40" y2="50" class="topo-line"/>
+              <line x1="80" y1="10" x2="120" y2="50" class="topo-line"/>
+              <line x1="80" y1="10" x2="80" y2="50" class="topo-line"/>
+              <line x1="40" y1="50" x2="20" y2="90" class="topo-line"/>
+              <line x1="40" y1="50" x2="60" y2="90" class="topo-line"/>
+              <line x1="80" y1="50" x2="80" y2="90" class="topo-line"/>
+              <line x1="120" y1="50" x2="100" y2="90" class="topo-line"/>
+              <line x1="120" y1="50" x2="140" y2="90" class="topo-line"/>
+              <!-- 节点 -->
+              <circle cx="80" cy="10" r="6" class="topo-node input"/>
+              <circle cx="40" cy="50" r="5" class="topo-node hidden"/>
+              <circle cx="80" cy="50" r="5" class="topo-node hidden"/>
+              <circle cx="120" cy="50" r="5" class="topo-node hidden"/>
+              <circle cx="20" cy="90" r="4" class="topo-node output"/>
+              <circle cx="60" cy="90" r="4" class="topo-node output"/>
+              <circle cx="80" cy="90" r="4" class="topo-node output"/>
+              <circle cx="100" cy="90" r="4" class="topo-node output"/>
+              <circle cx="140" cy="90" r="4" class="topo-node output"/>
+            </svg>
+            <div class="topology-spinner"></div>
+          </div>
+        </div>
+        
+        <!-- 技术简报 -->
+        <div class="briefing-section">
+          <div class="section-label">TECH BRIEFINGS</div>
+          <div class="briefing-cards">
+            <div class="briefing-card" v-for="(news, index) in techNews" :key="index">
+              <span class="briefing-tag">{{ news.tag }}</span>
+              <span class="briefing-text">{{ news.text }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 底部命令控制台 -->
+    <div class="command-console">
+      <div class="console-glow"></div>
+      <div class="console-input-wrapper">
+        <span class="console-prompt"> Jarvis</span>
         <input 
           v-model="inputText" 
           type="text" 
-          class="jarvis-input"
-          placeholder="输入指令或消息..."
+          class="console-input"
+          placeholder="输入指令..."
           @keyup.enter="sendMessage"
+          @input="onTyping"
         />
-        <button class="send-btn" @click="sendMessage" :disabled="!inputText.trim()">
-          <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
-        </button>
+        <div class="typing-effects" v-if="isTyping">
+          <span class="spark" v-for="i in 5" :key="i"></span>
+        </div>
       </div>
     </div>
 
-    <!-- 对话显示区域 -->
-    <div class="conversation-area" ref="conversationArea">
+    <!-- 对话区域 -->
+    <div class="conversation-section" ref="conversationArea">
       <div 
         v-for="(msg, index) in conversation" 
         :key="index" 
@@ -162,250 +225,145 @@
         :class="msg.role"
       >
         <div class="message-avatar">
-          <svg v-if="msg.role === 'jarvis'" viewBox="0 0 24 24" class="jarvis-avatar">
+          <svg v-if="msg.role === 'jarvis'" viewBox="0 0 24 24" class="jarvis-avatar-icon">
             <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1"/>
-            <circle cx="12" cy="12" r="6" fill="none" stroke="currentColor" stroke-width="1"/>
+            <circle cx="12" cy="12" r="5" fill="none" stroke="currentColor" stroke-width="1"/>
             <circle cx="12" cy="12" r="2" fill="currentColor"/>
           </svg>
-          <svg v-else viewBox="0 0 24 24" class="user-avatar">
+          <svg v-else viewBox="0 0 24 24" class="user-avatar-icon">
             <circle cx="12" cy="8" r="4" fill="currentColor"/>
             <path d="M12 14c-4 0-8 2-8 4v2h16v-2c0-2-4-4-8-4z" fill="currentColor"/>
           </svg>
         </div>
-        <div class="message-content">
+        <div class="message-bubble">
           <div class="message-text">{{ msg.content }}</div>
           <div class="message-time">{{ msg.time }}</div>
         </div>
       </div>
     </div>
 
-    <!-- 底部状态栏 -->
-    <div class="status-bar">
-      <div class="status-item">
-        <span class="status-dot online"></span>
-        <span>贾维斯在线</span>
-      </div>
-      <div class="status-item">
-        <span class="status-label">语音</span>
-        <span :class="voiceEnabled ? 'status-on' : 'status-off'">{{ voiceEnabled ? '启用' : '禁用' }}</span>
-      </div>
-      <div class="status-item">
-        <span class="status-label">连接</span>
-        <span class="status-on">已连接</span>
-      </div>
-    </div>
-
-    <!-- 装饰性数据流 -->
-    <div class="decorative-streams">
-      <div class="stream-column" v-for="i in 8" :key="i" :style="{ '--delay': i * 0.3 + 's', '--x': (i * 12.5) + '%' }">
-        <div class="stream-content">
-          <span v-for="j in 30" :key="j">{{ randomChar() }}</span>
-        </div>
-      </div>
-    </div>
-
     <!-- 扫描线效果 -->
-    <div class="scanline"></div>
+    <div class="scanline-overlay"></div>
+    
+    <!-- 呼吸光晕 -->
+    <div class="breath-glow"></div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, watch, nextTick, computed } from 'vue'
+import { ref, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import api from '../utils/axios'
 
 // 状态变量
-const isListening = ref(false)
-const isProcessing = ref(false)
-const isSpeaking = ref(false)
-const voiceEnabled = ref(true)
 const inputText = ref('')
-const statusText = ref('等待指令')
+const isTyping = ref(false)
 const conversation = ref([])
 const conversationArea = ref(null)
-const waveformCanvas = ref(null)
+const particlesCanvas = ref(null)
+const logContent = ref(null)
+const leftPanel = ref(null)
+const rightPanel = ref(null)
 
-// 系统状态数据
-const systems = ref([
-  { name: '反应堆', value: 98, color: '#00e5cc' },
-  { name: '装甲', value: 100, color: '#00e5cc' },
-  { name: '人工智能', value: 100, color: '#00e5cc' },
-  { name: '通信', value: 95, color: '#00e5cc' },
-  { name: '防御', value: 100, color: '#00e5cc' },
-  { name: '能源', value: 92, color: '#00e5cc' },
+// 时间
+const currentTime = ref('')
+
+// 资源使用率
+const cpuUsage = ref(0)
+const memoryUsage = ref(0)
+
+// 美元指数
+const dxyValue = ref('104.32')
+const dxyChange = ref(0.15)
+
+// 避险系数
+const riskFactor = ref(72)
+
+// Agent 气泡数据
+const agents = ref([
+  { id: 1, name: '闻讯家', icon: '📡', status: '在线', hue: 200 },
+  { id: 2, name: '金视家', icon: '📊', status: '在线', hue: 35 },
+  { id: 3, name: '智研家', icon: '🧠', status: '在线', hue: 280 },
+  { id: 4, name: '红策家', icon: '🎯', status: '在线', hue: 160 },
 ])
 
-// 时间计算
-const currentTime = ref('')
-const currentDate = ref('')
-const weekday = ref('')
+// 系统日志
+const systemLogs = ref([
+  { time: '00:00:01', text: '[BOOT] Jarvis Core initialized', type: 'info' },
+  { time: '00:00:02', text: '[LOAD] Neural networks loaded', type: 'success' },
+  { time: '00:00:03', text: '[LINK] Connected to GoldSeer', type: 'success' },
+  { time: '00:00:04', text: '[LINK] Connected to AIPulse', type: 'success' },
+])
 
+// 技术简报
+const techNews = ref([
+  { tag: 'AI', text: 'GPT-5 发布在即' },
+  { tag: '量子', text: '量子计算突破' },
+  { tag: '金融', text: 'BTC 突破新高' },
+])
+
+let timeInterval = null
+let logInterval = null
+let resourceInterval = null
+let particlesAnimation = null
+
+// 粒子样式
+const getParticleStyle = (index) => {
+  const angle = (index / 20) * 360
+  const distance = 60 + Math.random() * 30
+  return {
+    '--angle': angle + 'deg',
+    '--distance': distance + 'px',
+    '--duration': (2 + Math.random() * 2) + 's',
+    '--delay': Math.random() * 2 + 's'
+  }
+}
+
+// 更新时间
 const updateTime = () => {
   const now = new Date()
   currentTime.value = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`
-  currentDate.value = `${now.getFullYear()}年${(now.getMonth() + 1).toString().padStart(2, '0')}月${now.getDate().toString().padStart(2, '0')}日`
-  const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六']
-  weekday.value = weekdays[now.getWeekday()]
 }
 
-// 语音识别和合成
-let recognition = null
-let synthesis = null
-let animationFrame = null
-let timeInterval = null
+// 更新资源使用率（模拟）
+const updateResources = () => {
+  cpuUsage.value = Math.floor(30 + Math.random() * 40)
+  memoryUsage.value = Math.floor(40 + Math.random() * 35)
+}
 
-// 初始化
-onMounted(() => {
-  initSpeechRecognition()
-  initSpeechSynthesis()
-  initWaveform()
-  updateTime()
-  timeInterval = setInterval(updateTime, 1000)
+// 更新日志
+const updateLogs = () => {
+  const logMessages = [
+    '[DATA] Market data synchronized',
+    '[AI] Processing query...',
+    '[NET] Latency: 12ms',
+    '[SYS] Memory optimized',
+    '[SEC] Security scan complete',
+    '[DATA] Gold prices updated',
+    '[AI] Response generated',
+  ]
+  const types = ['info', 'success', 'warning']
   
-  // 模拟系统启动动画
-  setTimeout(() => {
-    statusText.value = '系统就绪'
-    setTimeout(() => {
-      statusText.value = '等待指令'
-    }, 1500)
-  }, 1000)
-  
-  // 添加欢迎消息
   const now = new Date()
-  const time = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`
+  const time = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`
   
-  conversation.value.push({
-    role: 'jarvis',
-    content: '您好，先生。我是贾维斯，为您服务。',
-    time
+  systemLogs.value.push({
+    time,
+    text: logMessages[Math.floor(Math.random() * logMessages.length)],
+    type: types[Math.floor(Math.random() * types.length)]
   })
   
-  //欢迎 延迟播放语音
+  if (systemLogs.value.length > 8) {
+    systemLogs.value.shift()
+  }
+}
+
+// 打字效果
+const onTyping = () => {
+  isTyping.value = true
   setTimeout(() => {
-    if (voiceEnabled.value) {
-      speak('您好，先生。我是贾维斯，为您服务。')
-    }
-  }, 2000)
-})
-
-onBeforeUnmount(() => {
-  if (recognition) {
-    recognition.stop()
-  }
-  if (animationFrame) {
-    cancelAnimationFrame(animationFrame)
-  }
-  if (timeInterval) {
-    clearInterval(timeInterval)
-  }
-  if (synthesis) {
-    synthesis.cancel()
-  }
-})
-
-// 监听对话变化，自动滚动到底部
-watch(conversation.value, () => {
-  nextTick(() => {
-    if (conversationArea.value) {
-      conversationArea.value.scrollTop = conversationArea.value.scrollHeight
-    }
-  })
-})
-
-// 初始化语音识别
-const initSpeechRecognition = () => {
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
-  if (!SpeechRecognition) {
-    console.warn('语音识别不支持')
-    ElMessage.warning('您的浏览器不支持语音识别功能')
-    return
-  }
-  
-  recognition = new SpeechRecognition()
-  recognition.continuous = false
-  recognition.interimResults = true
-  recognition.lang = 'zh-CN'
-  
-  recognition.onstart = () => {
-    isListening.value = true
-    statusText.value = '正在监听...'
-  }
-  
-  recognition.onresult = (event) => {
-    const transcript = Array.from(event.results)
-      .map(result => result[0].transcript)
-      .join('')
-    
-    if (event.results[0].isFinal) {
-      handleVoiceInput(transcript)
-    }
-  }
-  
-  recognition.onerror = (event) => {
-    console.error('语音识别错误:', event.error)
-    isListening.value = false
-    statusText.value = '识别失败'
-    if (event.error !== 'no-speech') {
-      ElMessage.error('语音识别出错，请重试')
-    }
-  }
-  
-  recognition.onend = () => {
-    isListening.value = false
-    if (statusText.value === '正在监听...') {
-      statusText.value = '等待指令'
-    }
-  }
-}
-
-// 初始化语音合成
-const initSpeechSynthesis = () => {
-  if (!window.speechSynthesis) {
-    console.warn('语音合成不支持')
-    return
-  }
-  synthesis = window.speechSynthesis
-  
-  // 尝试设置更自然的语音
-  const voices = synthesis.getVoices()
-  // 优先选择英文语音（贾维斯的标志性声音）
-  const englishVoice = voices.find(v => v.lang.startsWith('en') && v.name.includes('English'))
-  if (englishVoice) {
-    // 保存选中的语音
-  }
-}
-
-// 语音输入
-const startVoiceInput = () => {
-  if (!recognition) {
-    ElMessage.warning('您的浏览器不支持语音识别')
-    return
-  }
-  try {
-    recognition.start()
-  } catch (e) {
-    console.error('启动语音识别失败:', e)
-  }
-}
-
-const stopVoiceInput = () => {
-  if (recognition && isListening.value) {
-    recognition.stop()
-  }
-}
-
-// 处理语音输入
-const handleVoiceInput = (text) => {
-  const now = new Date()
-  const time = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`
-  
-  conversation.value.push({
-    role: 'user',
-    content: text,
-    time
-  })
-  
-  processJarvisResponse(text)
+    isTyping.value = false
+  }, 300)
 }
 
 // 发送消息
@@ -426,13 +384,9 @@ const sendMessage = () => {
   processJarvisResponse(text)
 }
 
-// 处理贾维斯响应
+// 处理响应
 const processJarvisResponse = async (text) => {
-  isProcessing.value = true
-  statusText.value = '处理中...'
-  
   try {
-    // 调用后端 API 获取响应
     const res = await api.post('/ai/chat', {
       message: text,
       context: conversation.value.slice(-5)
@@ -448,16 +402,8 @@ const processJarvisResponse = async (text) => {
       content: response,
       time
     })
-    
-    if (voiceEnabled.value) {
-      speak(response)
-    }
-    
   } catch (error) {
-    console.error('API 调用失败:', error)
-    // 如果后端 API 失败，使用本地响应
     const localResponse = generateLocalResponse(text)
-    
     const now = new Date()
     const time = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`
     
@@ -466,341 +412,507 @@ const processJarvisResponse = async (text) => {
       content: localResponse,
       time
     })
-    
-    if (voiceEnabled.value) {
-      speak(localResponse)
-    }
-  } finally {
-    isProcessing.value = false
-    statusText.value = '等待指令'
   }
+  
+  scrollToBottom()
 }
 
-// 生成本地响应
+// 本地响应
 const generateLocalResponse = (text) => {
-  const lowerText = text.toLowerCase()
+  const lower = text.toLowerCase()
   
-  if (lowerText.includes('hello') || lowerText.includes('你好') || lowerText.includes('嗨') || lowerText.includes('hi')) {
-    return '您好，先生。贾维斯随时待命。请指示。'
+  if (lower.includes('hello') || lower.includes('你好')) {
+    return '您好，先生。我是贾维斯，为您服务。'
   }
-  if (lowerText.includes('who are you') || lowerText.includes('你是谁')) {
-    return '我是贾维斯，您的个人 AI 助手。我被设计用来协助您管理 OpenClaw 系统，并为您提供各种帮助。'
+  if (lower.includes('状态') || lower.includes('status')) {
+    return '先生，所有系统正常运行。CPU 使用率 ' + cpuUsage.value + '%，内存使用率 ' + memoryUsage.value + '%。'
   }
-  if (lowerText.includes('time') || lowerText.includes('时间') || lowerText.includes('几点')) {
-    const now = new Date()
-    return `先生，现在是 ${now.getHours()}点${now.getMinutes()}分`
-  }
-  if (lowerText.includes('date') || lowerText.includes('日期') || lowerText.includes('今天')) {
-    const now = new Date()
-    return `今天是 ${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日`
-  }
-  if (lowerText.includes('status') || lowerText.includes('状态') || lowerText.includes('系统状态')) {
-    return '先生，所有系统正常运行。反应堆输出 98%，装甲完整，人工智能在线。'
-  }
-  if (lowerText.includes('thank') || lowerText.includes('谢谢') || lowerText.includes('感谢')) {
-    return '为您服务是我的荣幸，先生。'
-  }
-  if (lowerText.includes('bye') || lowerText.includes('再见') || lowerText.includes('拜拜')) {
-    return '先生，祝您有美好的一天。需要我时随时召唤我。'
-  }
-  if (lowerText.includes('help') || lowerText.includes('帮助') || lowerText.includes('你能做什么')) {
+  if (lower.includes('帮助') || lower.includes('help')) {
     return `先生，我可以帮助您：
-• 查询系统状态和时间
+• 查询系统状态
 • 执行终端命令
 • 管理实例和任务
-• 查看告警信息
-• 与您进行简单的对话
+• 查看市场数据（金视家）
+• 技术简报（AIPulse）
 
-您可以直接用语音或文字告诉我您的需求。`
+请直接告诉我您的需求。`
   }
   
   return '明白，先生。我会处理这个请求。'
 }
 
-// 语音播报
-const speak = (text) => {
-  if (!synthesis || !voiceEnabled.value) return
-  
-  // 停止当前正在播放的语音
-  synthesis.cancel()
-  
-  const utterance = new SpeechSynthesisUtterance(text)
-  utterance.lang = 'en-US' // 贾维斯使用英文
-  utterance.rate = 0.9 // 语速稍慢，更像贾维斯
-  utterance.pitch = 0.8 // 音调稍低
-  utterance.volume = 1
-  
-  utterance.onstart = () => {
-    isSpeaking.value = true
-  }
-  
-  utterance.onend = () => {
-    isSpeaking.value = false
-  }
-  
-  utterance.onerror = (e) => {
-    console.error('语音播放错误:', e)
-    isSpeaking.value = false
-  }
-  
-  synthesis.speak(utterance)
-}
-
-// 播报当前文本
-const speakCurrentText = () => {
-  const lastMessage = conversation.value.filter(m => m.role === 'jarvis').pop()
-  if (lastMessage) {
-    speak(lastMessage.content)
-    ElMessage.success('正在语音播报')
-  } else {
-    ElMessage.warning('没有可播报的内容')
-  }
-}
-
-// 显示系统信息
-const showSystemInfo = () => {
-  const info = `先生，系统状态报告：
-• 反应堆：98% 正常运行
-• 装甲：100% 完整
-• 人工智能：100% 在线
-• 通信：95% 稳定
-• 防御系统：100% 激活
-• 能源储备：92% 充足
-
-所有子系统正常运行。`
-  
-  const now = new Date()
-  const time = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`
-  
-  conversation.value.push({
-    role: 'jarvis',
-    content: info,
-    time
+const scrollToBottom = () => {
+  nextTick(() => {
+    if (conversationArea.value) {
+      conversationArea.value.scrollTop = conversationArea.value.scrollHeight
+    }
   })
-  
-  if (voiceEnabled.value) {
-    speak(info)
-  }
 }
 
-// 切换语音开关
-const toggleVoice = () => {
-  voiceEnabled.value = !voiceEnabled.value
-  if (voiceEnabled.value) {
-    speak('语音功能已启用')
-    ElMessage.success('语音功能已启用')
-  } else {
-    synthesis?.cancel()
-    ElMessage.info('语音功能已禁用')
-  }
-}
-
-// 清空对话
-const clearConversation = () => {
-  conversation.value = []
-  const now = new Date()
-  const time = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`
+// 初始化粒子动画
+const initParticles = () => {
+  if (!particlesCanvas.value) return
   
-  conversation.value.push({
-    role: 'jarvis',
-    content: '对话已清空，先生。',
-    time
-  })
-  
-  if (voiceEnabled.value) {
-    speak('对话已清空')
-  }
-}
-
-// 初始化波形可视化
-const initWaveform = () => {
-  if (!waveformCanvas.value) return
-  
-  const canvas = waveformCanvas.value
+  const canvas = particlesCanvas.value
   const ctx = canvas.getContext('2d')
   
   const resize = () => {
-    canvas.width = canvas.offsetWidth
-    canvas.height = canvas.offsetHeight
+    canvas.width = window.innerWidth
+    canvas.height = window.innerHeight
   }
   
   resize()
   window.addEventListener('resize', resize)
   
-  let phase = 0
+  const particles = []
+  const particleCount = 50
   
-  const draw = () => {
-    const width = canvas.width
-    const height = canvas.height
-    
-    ctx.clearRect(0, 0, width, height)
-    
-    const centerY = height / 2
-    const baseAmplitude = isListening.value ? 25 : 8
-    const amplitude = isProcessing.value ? baseAmplitude * 1.5 : baseAmplitude
-    
-    // 绘制多层波形
-    for (let layer = 0; layer < 3; layer++) {
-      ctx.beginPath()
-      const alpha = 0.6 - layer * 0.2
-      const lineWidth = 3 - layer
-      ctx.strokeStyle = layer === 0 ? `rgba(0, 229, 204, ${alpha})` : `rgba(0, 229, 204, ${alpha * 0.5})`
-      ctx.lineWidth = lineWidth
-      
-      const freq = 0.02 + layer * 0.01
-      const phaseOffset = layer * 0.5
-      const ampMultiplier = 1 - layer * 0.3
-      
-      for (let x = 0; x < width; x++) {
-        const y = centerY + Math.sin(x * freq + phase + phaseOffset) * amplitude * ampMultiplier
-        if (x === 0) {
-          ctx.moveTo(x, y)
-        } else {
-          ctx.lineTo(x, y)
-        }
-      }
-      
-      ctx.stroke()
-    }
-    
-    // 绘制中心线
-    ctx.beginPath()
-    ctx.strokeStyle = 'rgba(0, 229, 204, 0.3)'
-    ctx.lineWidth = 1
-    ctx.moveTo(0, centerY)
-    ctx.lineTo(width, centerY)
-    ctx.stroke()
-    
-    phase += 0.05
-    animationFrame = requestAnimationFrame(draw)
+  for (let i = 0; i < particleCount; i++) {
+    particles.push({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      vx: (Math.random() - 0.5) * 0.3,
+      vy: (Math.random() - 0.5) * 0.3,
+      size: Math.random() * 2 + 1,
+      alpha: Math.random() * 0.5 + 0.1
+    })
   }
   
-  draw()
+  const animate = () => {
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    
+    particles.forEach(p => {
+      p.x += p.vx
+      p.y += p.vy
+      
+      if (p.x < 0) p.x = canvas.width
+      if (p.x > canvas.width) p.x = 0
+      if (p.y < 0) p.y = canvas.height
+      if (p.y > canvas.height) p.y = 0
+      
+      ctx.beginPath()
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2)
+      ctx.fillStyle = `rgba(0, 210, 255, ${p.alpha})`
+      ctx.fill()
+    })
+    
+    particlesAnimation = requestAnimationFrame(animate)
+  }
+  
+  animate()
 }
 
-// 生成随机字符
-const randomChar = () => {
-  const chars = '01アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン JarvisJARVIS'
-  return chars[Math.floor(Math.random() * chars.length)]
+// Tilt 效果
+const initTiltEffect = (element) => {
+  if (!element) return
+  
+  element.addEventListener('mousemove', (e) => {
+    const rect = element.getBoundingClientRect()
+    const x = e.clientX - rect.left
+    const y = e.clientY - rect.top
+    const centerX = rect.width / 2
+    const centerY = rect.height / 2
+    
+    const rotateX = (y - centerY) / 10
+    const rotateY = (centerX - x) / 10
+    
+    element.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateZ(20px)`
+  })
+  
+  element.addEventListener('mouseleave', () => {
+    element.style.transform = 'perspective(1000px) rotateX(0deg) rotateY(0deg) translateZ(0px)'
+  })
 }
+
+onMounted(() => {
+  updateTime()
+  updateResources()
+  initParticles()
+  
+  timeInterval = setInterval(() => {
+    updateTime()
+  }, 1000)
+  
+  resourceInterval = setInterval(() => {
+    updateResources()
+  }, 3000)
+  
+  logInterval = setInterval(() => {
+    updateLogs()
+  }, 2000)
+  
+  // Tilt 效果
+  setTimeout(() => {
+    if (leftPanel.value) initTiltEffect(leftPanel.value)
+    if (rightPanel.value) initTiltEffect(rightPanel.value)
+  }, 100)
+  
+  // 欢迎消息
+  const now = new Date()
+  const time = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`
+  
+  conversation.value.push({
+    role: 'jarvis',
+    content: '您好，先生。我是贾维斯。\n\n我已连接到四个 AI Agent：\n• 闻讯家 - 实时资讯\n• 金视家 - 市场分析\n• 智研家 - 深度研究\n• 红策家 - 策略建议\n\n请告诉我您需要什么帮助。',
+    time
+  })
+})
+
+onBeforeUnmount(() => {
+  if (timeInterval) clearInterval(timeInterval)
+  if (logInterval) clearInterval(logInterval)
+  if (resourceInterval) clearInterval(resourceInterval)
+  if (particlesAnimation) cancelAnimationFrame(particlesAnimation)
+})
+
+watch(conversation.value, () => {
+  scrollToBottom()
+})
 </script>
 
 <style scoped>
-/* 基础容器 */
+/* ========== 基础容器 ========== */
 .jarvis-container {
   position: relative;
   min-height: 100vh;
-  background: linear-gradient(180deg, #050810 0%, #0a1020 30%, #0d1525 60%, #050810 100%);
+  background: #00050A;
   overflow: hidden;
-  padding: 20px;
-  font-family: 'Segoe UI', 'Roboto', sans-serif;
+  font-family: 'Orbitron', 'Roboto Mono', 'Consolas', monospace;
+  color: #00D2FF;
 }
 
-/* 全息背景网格 */
-.holographic-grid {
+/* ========== 粒子背景 ========== */
+.particles {
   position: absolute;
   top: 0;
   left: 0;
-  right: 0;
-  bottom: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.particles canvas {
+  width: 100%;
+  height: 100%;
+}
+
+/* ========== 3D 网格背景 ========== */
+.grid-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  perspective: 1000px;
+  overflow: hidden;
+}
+
+.grid-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 200%;
+  height: 200%;
   background-image: 
-    linear-gradient(rgba(0, 229, 204, 0.02) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 229, 204, 0.02) 1px, transparent 1px);
-  background-size: 30px 30px;
-  pointer-events: none;
+    linear-gradient(rgba(0, 210, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 210, 255, 0.03) 1px, transparent 1px);
+  background-size: 50px 50px;
 }
 
-/* 扫描线效果 */
-.scanline {
+.layer-1 {
+  transform: rotateX(60deg) translateZ(-100px);
+  animation: grid-move-1 20s linear infinite;
+  opacity: 0.5;
+}
+
+.layer-2 {
+  transform: rotateX(60deg) translateZ(0);
+  animation: grid-move-2 15s linear infinite;
+  opacity: 0.3;
+}
+
+.layer-3 {
+  transform: rotateX(60deg) translateZ(100px);
+  animation: grid-move-3 10s linear infinite;
+  opacity: 0.2;
+}
+
+@keyframes grid-move-1 {
+  0% { transform: rotateX(60deg) translateZ(-100px) translateY(0); }
+  100% { transform: rotateX(60deg) translateZ(-100px) translateY(50px); }
+}
+
+@keyframes grid-move-2 {
+  0% { transform: rotateX(60deg) translateY(0); }
+  100% { transform: rotateX(60deg) translateY(50px); }
+}
+
+@keyframes grid-move-3 {
+  0% { transform: rotateX(60deg) translateZ(100px) translateY(0); }
+  100% { transform: rotateX(60deg) translateZ(100px) translateY(50px); }
+}
+
+/* ========== 顶部状态栏 ========== */
+.system-header {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
-  bottom: 0;
-  background: linear-gradient(
-    to bottom,
-    transparent 50%,
-    rgba(0, 229, 204, 0.01) 50%
-  );
-  background-size: 100% 4px;
-  pointer-events: none;
-  animation: scanline-move 8s linear infinite;
+  display: flex;
+  justify-content: space-between;
+  padding: 15px 20px;
+  z-index: 100;
 }
 
-@keyframes scanline-move {
-  0% { transform: translateY(0); }
-  100% { transform: translateY(100%); }
+.log-stream-panel {
+  width: 45%;
+  background: rgba(0, 210, 255, 0.03);
+  border: 1px solid rgba(0, 210, 255, 0.2);
+  border-radius: 8px;
+  padding: 10px;
+  backdrop-filter: blur(10px);
 }
 
-/* 3D 弧形反应堆 */
-.arc-reactor {
-  position: absolute;
-  top: 30px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 300px;
-  height: 150px;
+.panel-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  color: #00D2FF;
+  margin-bottom: 8px;
 }
 
-.reactor-ring {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  border-radius: 50%;
-  border: 2px solid rgba(0, 229, 204, 0.4);
-  animation: ring-rotate 20s linear infinite;
+.title-icon {
+  animation: title-pulse 2s ease-in-out infinite;
 }
 
-.reactor-ring.outer {
-  top: 0;
-  width: 280px;
-  height: 140px;
-  animation-duration: 25s;
+@keyframes title-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }
 
-.reactor-ring.middle {
-  top: 20px;
-  width: 200px;
-  height: 100px;
-  border-color: rgba(0, 229, 204, 0.3);
-  animation-direction: reverse;
-  animation-duration: 18s;
+.log-content {
+  height: 60px;
+  overflow: hidden;
+  font-size: 10px;
 }
 
-.reactor-ring.inner {
-  top: 35px;
-  width: 130px;
-  height: 65px;
-  border-color: rgba(0, 229, 204, 0.5);
-  animation-duration: 12s;
+.log-line {
+  display: flex;
+  gap: 10px;
+  padding: 2px 0;
+  animation: log-fade-in 0.3s ease;
 }
 
-.ring-glow {
-  position: absolute;
-  top: -2px;
-  left: -2px;
-  right: -2px;
-  bottom: -2px;
-  border-radius: 50%;
-  box-shadow: 0 0 20px rgba(0, 229, 204, 0.3);
+@keyframes log-fade-in {
+  from { opacity: 0; transform: translateX(-10px); }
+  to { opacity: 1; transform: translateX(0); }
 }
 
-.reactor-core {
+.log-time {
+  color: rgba(0, 210, 255, 0.5);
+}
+
+.log-text {
+  color: rgba(0, 210, 255, 0.8);
+}
+
+.log-line.success .log-text { color: #00FF88; }
+.log-line.warning .log-text { color: #FF8C00; }
+.log-line.error .log-text { color: #FF4444; }
+
+.resource-panel {
+  width: 30%;
+  background: rgba(0, 210, 255, 0.03);
+  border: 1px solid rgba(0, 210, 255, 0.2);
+  border-radius: 8px;
+  padding: 10px 15px;
+  backdrop-filter: blur(10px);
+}
+
+.time-display-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.timezone {
+  font-size: 10px;
+  color: rgba(0, 210, 255, 0.5);
+  letter-spacing: 1px;
+}
+
+.main-time {
+  font-size: 20px;
+  font-weight: 300;
+  letter-spacing: 3px;
+  color: #00D2FF;
+  text-shadow: 0 0 20px rgba(0, 210, 255, 0.5);
+}
+
+.resource-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.resource-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.resource-label {
+  font-size: 10px;
+  color: rgba(0, 210, 255, 0.6);
+  width: 35px;
+}
+
+.resource-bar {
+  flex: 1;
+  height: 6px;
+  background: rgba(0, 210, 255, 0.1);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.resource-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.5s ease;
+}
+
+.resource-fill.cpu {
+  background: linear-gradient(90deg, #00D2FF, #00FF88);
+}
+
+.resource-fill.memory {
+  background: linear-gradient(90deg, #FF8C00, #FFDD00);
+}
+
+.resource-value {
+  font-size: 10px;
+  color: rgba(0, 210, 255, 0.8);
+  width: 40px;
+  text-align: right;
+}
+
+/* ========== 中央核心 ========== */
+.core-section {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 60px;
-  height: 60px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 10;
 }
 
-.core-pulse {
+.holographic-sphere {
+  position: relative;
+  width: 300px;
+  height: 300px;
+}
+
+.sphere-ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  border: 1px solid rgba(0, 210, 255, 0.3);
+}
+
+.outer-ring {
+  width: 280px;
+  height: 280px;
+  animation: ring-rotate-outer 25s linear infinite;
+}
+
+.middle-ring {
+  width: 200px;
+  height: 200px;
+  border-color: rgba(255, 140, 0, 0.3);
+  animation: ring-rotate-middle 18s linear infinite reverse;
+}
+
+.inner-ring {
+  width: 120px;
+  height: 120px;
+  border-color: rgba(0, 210, 255, 0.5);
+  animation: ring-rotate-inner 12s linear infinite;
+}
+
+@keyframes ring-rotate-outer {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+@keyframes ring-rotate-middle {
+  from { transform: translate(-50%, -50%) rotate(360deg); }
+  to { transform: translate(-50%, -50%) rotate(0deg); }
+}
+
+@keyframes ring-rotate-inner {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+.ring-segment {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: rgba(0, 210, 255, 0.6);
+  border-radius: 50%;
+  box-shadow: 0 0 10px rgba(0, 210, 255, 0.8);
+}
+
+.outer-ring .ring-segment {
+  top: -5px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.middle-ring .ring-segment {
+  top: -5px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(255, 140, 0, 0.6);
+  box-shadow: 0 0 10px rgba(255, 140, 0, 0.8);
+}
+
+.inner-ring .ring-segment {
+  top: -5px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.sphere-core {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 80px;
+  height: 80px;
+}
+
+.core-pulse-layer {
   position: absolute;
   width: 100%;
   height: 100%;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(0, 229, 204, 0.8) 0%, rgba(0, 229, 204, 0.2) 50%, transparent 70%);
-  animation: core-pulse 2s ease-in-out infinite;
+  background: radial-gradient(circle, rgba(0, 210, 255, 0.4) 0%, transparent 70%);
+  animation: core-heartbeat 2s ease-in-out infinite;
+}
+
+@keyframes core-heartbeat {
+  0%, 100% { transform: scale(1); opacity: 0.8; }
+  50% { transform: scale(1.5); opacity: 0.4; }
 }
 
 .core-inner {
@@ -808,545 +920,467 @@ const randomChar = () => {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 30px;
-  height: 30px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
-  background: radial-gradient(circle, #00e5cc 0%, rgba(0, 229, 204, 0.5) 100%);
-  box-shadow: 0 0 30px #00e5cc, 0 0 60px rgba(0, 229, 204, 0.5);
+  background: radial-gradient(circle, #00D2FF 0%, rgba(0, 210, 255, 0.5) 100%);
+  box-shadow: 0 0 30px #00D2FF, 0 0 60px rgba(0, 210, 255, 0.5);
 }
 
-@keyframes ring-rotate {
-  from { transform: translateX(-50%) rotate(0deg); }
-  to { transform: translateX(-50%) rotate(360deg); }
+.core-glow {
+  position: absolute;
+  top: -10px;
+  left: -10px;
+  right: -10px;
+  bottom: -10px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(0, 210, 255, 0.3) 0%, transparent 70%);
+  animation: core-glow-pulse 1.5s ease-in-out infinite;
 }
 
-@keyframes core-pulse {
-  0%, 100% { transform: scale(1); opacity: 0.8; }
-  50% { transform: scale(1.3); opacity: 1; }
+@keyframes core-glow-pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
 }
 
-/* 能量流动画 */
-.energy-flow {
+/* 能量粒子 */
+.energy-particles {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 200px;
-  height: 200px;
-  border-radius: 50%;
-  background: conic-gradient(
-    from 0deg,
-    transparent 0deg,
-    rgba(0, 229, 204, 0.1) 60deg,
-    rgba(0, 229, 204, 0.2) 120deg,
-    transparent 180deg,
-    transparent 360deg
-  );
-  animation: energy-rotate 4s linear infinite;
 }
 
-@keyframes energy-rotate {
-  from { transform: translate(-50%, -50%) rotate(0deg); }
-  to { transform: translate(-50%, -50%) rotate(360deg); }
-}
-
-/* 全息面板 */
-.holographic-panels {
+.particle {
   position: absolute;
-  top: 200px;
+  width: 4px;
+  height: 4px;
+  background: #00D2FF;
+  border-radius: 50%;
+  box-shadow: 0 0 6px #00D2FF;
+  animation: particle-orbit var(--duration) linear infinite;
+  animation-delay: var(--delay);
+  transform-origin: var(--distance) 0;
+  opacity: 0.8;
+}
+
+@keyframes particle-orbit {
+  from { transform: rotate(var(--angle)) translateX(var(--distance)); }
+  to { transform: rotate(calc(var(--angle) + 360deg)) translateX(var(--distance)); }
+}
+
+/* Agent 气泡 */
+.agent-bubbles {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  margin-top: 40px;
+}
+
+.agent-bubble {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 10px 15px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid hsla(var(--hue), 80%, 60%, 0.3);
+  border-radius: 20px;
+  backdrop-filter: blur(10px);
+  animation: bubble-float 3s ease-in-out infinite;
+  transition: all 0.3s ease;
+}
+
+.agent-bubble:hover {
+  transform: translateY(-10px);
+  border-color: hsla(var(--hue), 80%, 60%, 0.8);
+  box-shadow: 0 10px 30px hsla(var(--hue), 80%, 60%, 0.3);
+}
+
+@keyframes bubble-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+.bubble-icon {
+  font-size: 24px;
+}
+
+.bubble-name {
+  font-size: 11px;
+  color: hsla(var(--hue), 80%, 70%, 1);
+  letter-spacing: 1px;
+}
+
+.bubble-status {
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* ========== 浮动面板 ========== */
+.floating-panel {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 260px;
+  background: rgba(0, 10, 20, 0.7);
+  border: 1px solid rgba(0, 210, 255, 0.3);
+  border-radius: 12px;
+  backdrop-filter: blur(20px);
+  overflow: hidden;
+  transition: transform 0.3s ease;
+  z-index: 20;
+}
+
+.left-panel {
+  left: 30px;
+}
+
+.right-panel {
+  right: 30px;
+}
+
+.panel-scan-line {
+  position: absolute;
+  top: 0;
   left: 0;
   right: 0;
-  display: flex;
-  justify-content: space-between;
-  padding: 0 20px;
-  pointer-events: none;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #00D2FF, transparent);
+  animation: scan-line 3s linear infinite;
 }
 
-.holo-panel {
-  width: 220px;
-  background: rgba(0, 229, 204, 0.03);
-  border: 1px solid rgba(0, 229, 204, 0.2);
-  border-radius: 8px;
+@keyframes scan-line {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.panel-content {
   padding: 15px;
-  backdrop-filter: blur(5px);
 }
 
 .panel-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: 8px;
   margin-bottom: 15px;
   padding-bottom: 10px;
-  border-bottom: 1px solid rgba(0, 229, 204, 0.2);
+  border-bottom: 1px solid rgba(0, 210, 255, 0.2);
 }
 
-.panel-title {
-  font-size: 12px;
-  font-weight: 600;
-  color: #00e5cc;
-  letter-spacing: 2px;
+.panel-badge {
+  color: #FF8C00;
+  animation: badge-pulse 2s ease-in-out infinite;
 }
 
-.panel-status {
-  font-size: 10px;
-  padding: 2px 8px;
-  border-radius: 10px;
-  background: rgba(0, 229, 204, 0.2);
-  color: #00e5cc;
-}
-
-.panel-status.online {
-  animation: status-blink 2s ease-in-out infinite;
-}
-
-@keyframes status-blink {
+@keyframes badge-pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.5; }
 }
 
-.system-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 10px;
-  font-size: 11px;
-}
-
-.sys-name {
-  width: 50px;
-  color: rgba(0, 229, 204, 0.7);
-}
-
-.sys-bar {
-  flex: 1;
-  height: 4px;
-  background: rgba(0, 229, 204, 0.1);
-  border-radius: 2px;
-  overflow: hidden;
-}
-
-.sys-value {
-  height: 100%;
-  border-radius: 2px;
-  transition: width 0.5s ease;
-}
-
-.sys-value-text {
-  width: 35px;
-  text-align: right;
-  color: rgba(0, 229, 204, 0.8);
-  font-size: 10px;
-}
-
-.time-display {
-  text-align: center;
-}
-
-.time-main {
-  font-size: 32px;
-  font-weight: 300;
-  color: #00e5cc;
-  letter-spacing: 4px;
-  text-shadow: 0 0 20px rgba(0, 229, 204, 0.5);
-}
-
-.date-display {
+.panel-title {
   font-size: 14px;
-  color: rgba(0, 229, 204, 0.7);
-  margin-top: 5px;
+  font-weight: 600;
+  letter-spacing: 2px;
 }
 
-.weekday {
-  font-size: 12px;
-  color: rgba(0, 229, 204, 0.5);
-  margin-top: 3px;
+.section-label {
+  font-size: 10px;
+  color: rgba(0, 210, 255, 0.6);
+  letter-spacing: 2px;
+  margin-bottom: 8px;
 }
 
-/* 中央核心显示 */
-.core-display {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -60%);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+/* K线图 */
+.kline-section {
+  margin-bottom: 15px;
 }
 
-.core-avatar {
-  width: 100px;
-  height: 100px;
-  animation: avatar-float 3s ease-in-out infinite;
+.kline-chart {
+  position: relative;
+  height: 60px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 6px;
+  padding: 5px;
 }
 
-@keyframes avatar-float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
-}
-
-.avatar-svg {
+.kline-svg {
   width: 100%;
   height: 100%;
-  filter: drop-shadow(0 0 20px rgba(0, 229, 204, 0.5));
 }
 
-.core-status {
-  margin-top: 15px;
+.kline-price {
+  position: absolute;
+  bottom: 8px;
+  right: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #FF8C00;
+}
+
+/* 美元指数 */
+.dxy-section {
+  margin-bottom: 15px;
+}
+
+.dxy-display {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.dxy-value {
+  font-size: 28px;
+  font-weight: 300;
+  color: #00D2FF;
+}
+
+.dxy-change {
+  font-size: 12px;
+  color: #00FF88;
+}
+
+.dxy-change.rising {
+  color: #00FF88;
+}
+
+/* 避险系数 */
+.risk-section {
+  margin-bottom: 10px;
+}
+
+.risk-bar-container {
   display: flex;
   align-items: center;
   gap: 10px;
 }
 
-.status-indicator {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: #00e5cc;
-  box-shadow: 0 0 10px #00e5cc;
-  animation: status-idle 2s ease-in-out infinite;
+.risk-bar {
+  flex: 1;
+  height: 8px;
+  background: rgba(0, 210, 255, 0.1);
+  border-radius: 4px;
+  overflow: hidden;
 }
 
-.status-indicator.active {
-  animation: status-active 0.5s ease-in-out infinite;
+.risk-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #00D2FF, #FF8C00);
+  border-radius: 4px;
+  transition: width 0.5s ease;
 }
 
-@keyframes status-idle {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
-}
-
-@keyframes status-active {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.3); }
-}
-
-.status-text {
-  color: #00e5cc;
+.risk-value {
   font-size: 12px;
-  letter-spacing: 2px;
-  text-transform: uppercase;
+  color: #FF8C00;
 }
 
-/* 波形可视化 */
-.waveform-section {
-  position: absolute;
-  bottom: 320px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 400px;
-  height: 80px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+/* 拓扑图 */
+.topology-section {
+  margin-bottom: 15px;
 }
 
-.waveform-canvas {
-  width: 100%;
-  height: 60px;
-}
-
-.waveform-label {
-  font-size: 10px;
-  color: rgba(0, 229, 204, 0.6);
-  letter-spacing: 3px;
-  margin-top: 5px;
-  animation: label-blink 1s ease-in-out infinite;
-}
-
-@keyframes label-blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.3; }
-}
-
-/* 控制面板 */
-.control-panel {
-  position: absolute;
-  bottom: 200px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 25px;
-}
-
-.voice-btn {
+.topology-graph {
   position: relative;
-  width: 120px;
   height: 120px;
-  border: none;
-  background: transparent;
-  cursor: pointer;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 6px;
 }
 
-.btn-outer-ring {
-  position: absolute;
-  top: 0;
-  left: 0;
+.topology-svg {
   width: 100%;
   height: 100%;
-  border: 2px solid rgba(0, 229, 204, 0.3);
-  border-radius: 50%;
-  animation: btn-ring-idle 3s ease-in-out infinite;
 }
 
-.btn-middle-ring {
-  position: absolute;
-  top: 15%;
-  left: 15%;
-  width: 70%;
-  height: 70%;
-  border: 1px solid rgba(0, 229, 204, 0.2);
-  border-radius: 50%;
-  animation: btn-ring-idle 2s ease-in-out infinite reverse;
+.topo-line {
+  stroke: rgba(0, 210, 255, 0.3);
+  stroke-width: 1;
 }
 
-@keyframes btn-ring-idle {
-  0%, 100% { transform: scale(1); opacity: 0.5; }
-  50% { transform: scale(1.05); opacity: 0.3; }
+.topo-node {
+  fill: rgba(0, 210, 255, 0.8);
 }
 
-.voice-btn.listening .btn-outer-ring,
-.voice-btn.listening .btn-middle-ring {
-  animation: btn-ring-active 0.5s ease-in-out infinite;
+.topo-node.input {
+  fill: #00D2FF;
 }
 
-.voice-btn.processing .btn-outer-ring,
-.voice-btn.processing .btn-middle-ring {
-  animation: btn-ring-active 0.3s ease-in-out infinite;
+.topo-node.hidden {
+  fill: rgba(0, 210, 255, 0.6);
 }
 
-.voice-btn.speaking .btn-outer-ring,
-.voice-btn.speaking .btn-middle-ring {
-  animation: btn-ring-active 0.6s ease-in-out infinite;
+.topo-node.output {
+  fill: #FF8C00;
 }
 
-@keyframes btn-ring-active {
-  0%, 100% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.15); opacity: 0.4; }
-}
-
-.btn-inner {
+.topology-spinner {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 70px;
-  height: 70px;
-  background: linear-gradient(135deg, rgba(0, 229, 204, 0.2) 0%, rgba(0, 180, 160, 0.2) 100%);
-  border: 2px solid #00e5cc;
+  width: 80px;
+  height: 80px;
+  border: 2px solid transparent;
+  border-top-color: rgba(0, 210, 255, 0.5);
   border-radius: 50%;
+  animation: spinner-rotate 2s linear infinite;
+}
+
+@keyframes spinner-rotate {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+/* 技术简报 */
+.briefing-section {
+  margin-bottom: 10px;
+}
+
+.briefing-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.briefing-card {
   display: flex;
   align-items: center;
-  justify-content: center;
-  transition: all 0.3s ease;
+  gap: 8px;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 6px;
+  font-size: 11px;
 }
 
-.voice-btn:hover .btn-inner {
-  background: linear-gradient(135deg, rgba(0, 229, 204, 0.4) 0%, rgba(0, 180, 160, 0.4) 100%);
-  box-shadow: 0 0 40px rgba(0, 229, 204, 0.5);
+.briefing-tag {
+  padding: 2px 6px;
+  background: rgba(255, 140, 0, 0.2);
+  color: #FF8C00;
+  border-radius: 4px;
+  font-size: 9px;
 }
 
-.voice-btn.listening .btn-inner,
-.voice-btn.processing .btn-inner,
-.voice-btn.speaking .btn-inner {
-  background: linear-gradient(135deg, rgba(0, 229, 204, 0.8) 0%, rgba(0, 180, 160, 0.8) 100%);
-  box-shadow: 0 0 50px rgba(0, 229, 204, 0.8);
+.briefing-text {
+  color: rgba(255, 255, 255, 0.7);
 }
 
-.btn-core {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.mic-icon {
-  width: 30px;
-  height: 30px;
-  fill: #00e5cc;
-}
-
-.voice-waves {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  height: 30px;
-}
-
-.voice-waves span {
-  width: 4px;
-  background: #00e5cc;
-  border-radius: 2px;
-  animation: voice-wave 0.5s ease-in-out infinite;
-}
-
-.voice-waves span:nth-child(1) { height: 15px; animation-delay: 0s; }
-.voice-waves span:nth-child(2) { height: 25px; animation-delay: 0.1s; }
-.voice-waves span:nth-child(3) { height: 30px; animation-delay: 0.2s; }
-.voice-waves span:nth-child(4) { height: 25px; animation-delay: 0.3s; }
-.voice-waves span:nth-child(5) { height: 15px; animation-delay: 0.4s; }
-
-@keyframes voice-wave {
-  0%, 100% { transform: scaleY(0.4); }
-  50% { transform: scaleY(1); }
-}
-
-/* 功能按钮 */
-.action-buttons {
-  display: flex;
-  gap: 20px;
-}
-
-.action-btn {
-  width: 50px;
-  height: 50px;
-  border: 1px solid rgba(0, 229, 204, 0.4);
-  background: rgba(0, 229, 204, 0.05);
-  border-radius: 50%;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.3s ease;
-}
-
-.action-btn svg {
-  width: 22px;
-  height: 22px;
-  fill: rgba(0, 229, 204, 0.7);
-}
-
-.action-btn:hover {
-  background: rgba(0, 229, 204, 0.2);
-  border-color: #00e5cc;
-  box-shadow: 0 0 25px rgba(0, 229, 204, 0.4);
-  transform: scale(1.1);
-}
-
-.action-btn:hover svg {
-  fill: #00e5cc;
-}
-
-.action-btn.active {
-  background: rgba(0, 229, 204, 0.3);
-  border-color: #00e5cc;
-}
-
-/* 输入区域 */
-.input-area {
+/* ========== 底部命令控制台 ========== */
+.command-console {
   position: absolute;
-  bottom: 100px;
+  bottom: 80px;
   left: 50%;
   transform: translateX(-50%);
-  width: 100%;
+  width: 60%;
   max-width: 600px;
+  z-index: 30;
 }
 
-.input-container {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  padding: 8px 8px 8px 20px;
-  background: rgba(0, 229, 204, 0.03);
-  border: 1px solid rgba(0, 229, 204, 0.3);
-  border-radius: 30px;
-  position: relative;
-  overflow: hidden;
-}
-
-.input-glow {
+.console-glow {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(90deg, transparent, rgba(0, 229, 204, 0.1), transparent);
-  animation: input-glow 3s ease-in-out infinite;
+  background: linear-gradient(90deg, transparent, rgba(0, 210, 255, 0.1), transparent);
+  animation: console-glow 3s ease-in-out infinite;
+  border-radius: 30px;
 }
 
-@keyframes input-glow {
-  0%, 100% { transform: translateX(-100%); }
-  50% { transform: translateX(100%); }
+@keyframes console-glow {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.6; }
 }
 
-.jarvis-input {
+.console-input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 20px;
+  background: rgba(0, 10, 20, 0.8);
+  border: 1px solid rgba(0, 210, 255, 0.3);
+  border-radius: 30px;
+  position: relative;
+  overflow: visible;
+}
+
+.console-prompt {
+  color: #FF8C00;
+  font-weight: 600;
+}
+
+.console-input {
   flex: 1;
   background: transparent;
   border: none;
   outline: none;
-  color: #00e5cc;
-  font-size: 16px;
-  padding: 12px 0;
-  position: relative;
+  color: #00D2FF;
+  font-family: inherit;
+  font-size: 14px;
 }
 
-.jarvis-input::placeholder {
-  color: rgba(0, 229, 204, 0.4);
+.console-input::placeholder {
+  color: rgba(0, 210, 255, 0.3);
 }
 
-.send-btn {
-  width: 50px;
-  height: 50px;
-  border: 1px solid rgba(0, 229, 204, 0.5);
-  background: rgba(0, 229, 204, 0.15);
-  border-radius: 50%;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.3s ease;
-  position: relative;
-}
-
-.send-btn svg {
-  width: 22px;
-  height: 22px;
-  fill: #00e5cc;
-}
-
-.send-btn:hover:not(:disabled) {
-  background: rgba(0, 229, 204, 0.4);
-  box-shadow: 0 0 25px rgba(0, 229, 204, 0.5);
-  transform: scale(1.05);
-}
-
-.send-btn:disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
-}
-
-/* 对话区域 */
-.conversation-area {
+/* 打字火花效果 */
+.typing-effects {
   position: absolute;
-  top: 380px;
+  right: 60px;
+  display: flex;
+  gap: 3px;
+}
+
+.spark {
+  width: 3px;
+  height: 3px;
+  background: #FF8C00;
+  border-radius: 50%;
+  animation: spark-fly 0.3s ease-out;
+}
+
+.spark:nth-child(1) { animation-delay: 0s; }
+.spark:nth-child(2) { animation-delay: 0.05s; }
+.spark:nth-child(3) { animation-delay: 0.1s; }
+.spark:nth-child(4) { animation-delay: 0.15s; }
+.spark:nth-child(5) { animation-delay: 0.2s; }
+
+@keyframes spark-fly {
+  0% { transform: translateY(0) scale(1); opacity: 1; }
+  100% { transform: translateY(-10px) scale(0); opacity: 0; }
+}
+
+/* ========== 对话区域 ========== */
+.conversation-section {
+  position: absolute;
+  bottom: 160px;
   left: 50%;
   transform: translateX(-50%);
-  width: 100%;
-  max-width: 650px;
-  height: calc(100vh - 550px);
+  width: 50%;
+  max-width: 500px;
+  max-height: 200px;
   overflow-y: auto;
-  padding: 20px;
+  padding: 10px;
+  z-index: 25;
 }
 
-.conversation-area::-webkit-scrollbar {
-  width: 4px;
+.conversation-section::-webkit-scrollbar {
+  width: 3px;
 }
 
-.conversation-area::-webkit-scrollbar-thumb {
-  background: rgba(0, 229, 204, 0.3);
+.conversation-section::-webkit-scrollbar-thumb {
+  background: rgba(0, 210, 255, 0.3);
   border-radius: 2px;
 }
 
 .message {
   display: flex;
-  gap: 15px;
-  margin-bottom: 20px;
-  animation: message-fade-in 0.4s ease;
+  gap: 10px;
+  margin-bottom: 12px;
+  animation: message-appear 0.3s ease;
 }
 
-@keyframes message-fade-in {
-  from { opacity: 0; transform: translateY(15px); }
+@keyframes message-appear {
+  from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
@@ -1355,134 +1389,130 @@ const randomChar = () => {
 }
 
 .message-avatar {
-  width: 40px;
-  height: 40px;
+  width: 30px;
+  height: 30px;
   flex-shrink: 0;
 }
 
-.jarvis-avatar {
+.jarvis-avatar-icon, .user-avatar-icon {
   width: 100%;
   height: 100%;
-  color: #00e5cc;
-  filter: drop-shadow(0 0 5px rgba(0, 229, 204, 0.5));
 }
 
-.user-avatar {
-  width: 100%;
-  height: 100%;
-  color: rgba(255, 255, 255, 0.6);
+.jarvis-avatar-icon {
+  color: #00D2FF;
+  filter: drop-shadow(0 0 5px rgba(0, 210, 255, 0.5));
 }
 
-.message-content {
-  max-width: 75%;
+.user-avatar-icon {
+  color: rgba(255, 255, 255, 0.5);
 }
 
-.message.jarvis .message-content {
-  padding: 15px 20px;
-  background: linear-gradient(135deg, rgba(0, 229, 204, 0.1) 0%, rgba(0, 229, 204, 0.05) 100%);
-  border: 1px solid rgba(0, 229, 204, 0.2);
-  border-radius: 20px 20px 20px 5px;
+.message-bubble {
+  max-width: 80%;
+  padding: 10px 15px;
+  border-radius: 15px;
 }
 
-.message.user .message-content {
-  padding: 15px 20px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 20px 20px 5px 20px;
+.message.jarvis .message-bubble {
+  background: rgba(0, 210, 255, 0.1);
+  border: 1px solid rgba(0, 210, 255, 0.3);
+}
+
+.message.user .message-bubble {
+  background: rgba(255, 140, 0, 0.1);
+  border: 1px solid rgba(255, 140, 0, 0.3);
 }
 
 .message-text {
-  color: #e0e0e0;
-  line-height: 1.6;
+  font-size: 12px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.9);
   white-space: pre-wrap;
 }
 
 .message-time {
-  font-size: 11px;
+  font-size: 9px;
   color: rgba(255, 255, 255, 0.3);
-  margin-top: 5px;
+  margin-top: 4px;
 }
 
-/* 底部状态栏 */
-.status-bar {
-  position: absolute;
-  bottom: 20px;
-  left: 20px;
-  right: 20px;
-  display: flex;
-  justify-content: center;
-  gap: 40px;
-  padding: 10px 20px;
-  background: rgba(0, 229, 204, 0.03);
-  border: 1px solid rgba(0, 229, 204, 0.1);
-  border-radius: 8px;
-}
-
-.status-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  color: rgba(0, 229, 204, 0.6);
-}
-
-.status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #00e5cc;
-}
-
-.status-dot.online {
-  box-shadow: 0 0 10px #00e5cc;
-  animation: status-blink 2s ease-in-out infinite;
-}
-
-.status-label {
-  color: rgba(0, 229, 204, 0.4);
-}
-
-.status-on {
-  color: #00e5cc;
-}
-
-.status-off {
-  color: rgba(255, 100, 100, 0.6);
-}
-
-/* 装饰性数据流 */
-.decorative-streams {
+/* ========== 扫描线效果 ========== */
+.scanline-overlay {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
+  background: linear-gradient(
+    to bottom,
+    transparent 50%,
+    rgba(0, 0, 0, 0.03) 50%
+  );
+  background-size: 100% 4px;
   pointer-events: none;
-  overflow: hidden;
+  animation: scanline-scroll 10s linear infinite;
 }
 
-.stream-column {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: var(--x);
-  width: 80px;
-  overflow: hidden;
-  opacity: 0.15;
-}
-
-.stream-content {
-  display: flex;
-  flex-direction: column;
-  animation: stream-move 15s linear infinite;
-  animation-delay: var(--delay);
-  font-size: 9px;
-  color: #00e5cc;
-  letter-spacing: 2px;
-}
-
-@keyframes stream-move {
-  0% { transform: translateY(-100%); }
+@keyframes scanline-scroll {
+  0% { transform: translateY(0); }
   100% { transform: translateY(100%); }
+}
+
+/* ========== 呼吸光晕 ========== */
+.breath-glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(0, 210, 255, 0.05) 0%, transparent 70%);
+  pointer-events: none;
+  animation: breath-glow-anim 4s ease-in-out infinite;
+  z-index: 1;
+}
+
+@keyframes breath-glow-anim {
+  0%, 100% { opacity: 0.5; transform: translate(-50%, -50%) scale(1); }
+  50% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+}
+
+/* ========== 响应式 ========== */
+@media (max-width: 1200px) {
+  .left-panel, .right-panel {
+    width: 220px;
+  }
+  
+  .agent-bubbles {
+    gap: 10px;
+  }
+  
+  .agent-bubble {
+    padding: 8px 10px;
+  }
+}
+
+@media (max-width: 768px) {
+  .system-header {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .log-stream-panel, .resource-panel {
+    width: 100%;
+  }
+  
+  .floating-panel {
+    display: none;
+  }
+  
+  .command-console {
+    width: 90%;
+  }
+  
+  .conversation-section {
+    width: 90%;
+  }
 }
 </style>
