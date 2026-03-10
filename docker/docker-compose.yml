@@ -1,0 +1,67 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: openclaw-manager-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: openclaw_manager
+      TZ: Asia/Shanghai
+    volumes:
+      - mysql_data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    networks:
+      - openclaw-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: openclaw-manager-redis
+    restart: always
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - openclaw-network
+
+  backend:
+    build: ../backend
+    container_name: openclaw-manager-backend
+    restart: always
+    environment:
+      - TZ=Asia/Shanghai
+      - SQLALCHEMY_DATABASE_URL=mysql+pymysql://root:password@mysql:3306/openclaw_manager
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=${SECRET_KEY}
+      - DEFAULT_ADMIN_USERNAME=${DEFAULT_ADMIN_USERNAME:-admin}
+      - DEFAULT_ADMIN_EMAIL=${DEFAULT_ADMIN_EMAIL:-admin@example.com}
+      - DEFAULT_ADMIN_PASSWORD=${DEFAULT_ADMIN_PASSWORD}
+    ports:
+      - "8000:8000"
+    depends_on:
+      - mysql
+      - redis
+    networks:
+      - openclaw-network
+
+  frontend:
+    build: ../frontend
+    container_name: openclaw-manager-frontend
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - openclaw-network
+
+volumes:
+  mysql_data:
+  redis_data:
+
+networks:
+  openclaw-network:
+    driver: bridge
